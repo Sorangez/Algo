@@ -7,13 +7,43 @@ public class Algo {
     };
     static final String DIRECTION_CHARS = "UDLR"; // Corresponding direction characters
 
+    // Precomputed Manhattan distances
+    static final int[][] MANHATTAN_DISTANCE = new int[N * N][N * N];
+
+    static {
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                for (int k = 0; k < N; k++) {
+                    for (int l = 0; l < N; l++) {
+                        MANHATTAN_DISTANCE[i * N + j][k * N + l] = Math.abs(i - k) + Math.abs(j - l);
+                    }
+                }
+            }
+        }
+    }
+
+    // Precomputed edge-specific rules
+    static final boolean[][][] VALID_MOVES = new boolean[N][N][4]; // [x][y][direction]
+
+    static {
+        for (int x = 0; x < N; x++) {
+            for (int y = 0; y < N; y++) {
+                // Determine valid moves for each direction
+                VALID_MOVES[x][y][0] = x > 0;         // Up
+                VALID_MOVES[x][y][1] = x < N - 1;    // Down
+                VALID_MOVES[x][y][2] = y > 0;        // Left
+                VALID_MOVES[x][y][3] = y < N - 1;    // Right
+            }
+        }
+    }
+
     static boolean isValid(int x, int y, long visited) {
         return x >= 0 && x < N && y >= 0 && y < N && (visited & (1L << (x * N + y))) == 0;
     }
 
     static boolean isPrunable(int x, int y, int targetX, int targetY, int step, int totalSteps, long visited) {
         // Prune if remaining steps are insufficient to cover the Manhattan distance to the target
-        int manhattanDistance = Math.abs(x - targetX) + Math.abs(y - targetY);
+        int manhattanDistance = MANHATTAN_DISTANCE[x * N + y][targetX * N + targetY];
         if ((totalSteps - step) < manhattanDistance) {
             return true;
         }
@@ -27,22 +57,7 @@ public class Algo {
     }
 
     static boolean nodesConnected(int startX, int startY, long visited) {
-        // Perform a flood fill from the current position to see if all unvisited nodes are connected
         boolean[][] visitedNodes = new boolean[N][N];
-        int unvisitedCount = 0;
-
-        // Mark all visited nodes as true in visitedNodes array
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                if ((visited & (1L << (i * N + j))) != 0) {
-                    visitedNodes[i][j] = true;
-                } else {
-                    unvisitedCount++;
-                }
-            }
-        }
-
-        // Use a simple array-based queue for BFS
         int[][] queue = new int[N * N][2];
         int front = 0, rear = 0;
 
@@ -53,6 +68,7 @@ public class Algo {
         visitedNodes[startX][startY] = true;
 
         int reachableCount = 0;
+        int unvisitedCount = N * N - Long.bitCount(visited); // Total unvisited nodes
 
         while (front < rear) {
             int[] current = queue[front++];
@@ -61,19 +77,29 @@ public class Algo {
 
             reachableCount++;
 
-            for (int[] d : DIRECTIONS) {
-                int newX = x + d[0];
-                int newY = y + d[1];
+            // Early exit: If we've reached all unvisited nodes, return true
+            if (reachableCount == unvisitedCount) {
+                return true;
+            }
+
+            // Explore neighbors
+            for (int d = 0; d < 4; d++) {
+                if (!VALID_MOVES[x][y][d]) continue; // Use precomputed edge-specific rules
+                int newX = x + DIRECTIONS[d][0];
+                int newY = y + DIRECTIONS[d][1];
                 if (newX >= 0 && newX < N && newY >= 0 && newY < N && !visitedNodes[newX][newY]) {
-                    visitedNodes[newX][newY] = true;
-                    queue[rear][0] = newX;
-                    queue[rear][1] = newY;
-                    rear++;
+                    int cellIndex = newX * N + newY;
+                    if ((visited & (1L << cellIndex)) == 0) { // Check if unvisited
+                        visitedNodes[newX][newY] = true;
+                        queue[rear][0] = newX;
+                        queue[rear][1] = newY;
+                        rear++;
+                    }
                 }
             }
         }
 
-        // Return true if all unvisited nodes are reachable
+        // If we exhaust the flood-fill without reaching all unvisited nodes
         return reachableCount == unvisitedCount;
     }
 
@@ -94,21 +120,19 @@ public class Algo {
 
         char dir = directions[step];
         if (dir == '*') {
-            // If '*', try all four possible directions except the direction we just came from
-            for (int i = 0; i < DIRECTIONS.length; i++) {
-                if (i == (prevDir ^ 1)) { // Skip the direction opposite to the previous move
-                    continue;
-                }
-                int newX = x + DIRECTIONS[i][0];
-                int newY = y + DIRECTIONS[i][1];
+            // If '*', try all valid directions except the opposite of the previous move
+            for (int d = 0; d < 4; d++) {
+                if (d == (prevDir ^ 1) || !VALID_MOVES[x][y][d]) continue; // Skip invalid or opposite direction
+                int newX = x + DIRECTIONS[d][0];
+                int newY = y + DIRECTIONS[d][1];
                 if (isValid(newX, newY, visited)) {
-                    pathCount += findPaths(newX, newY, targetX, targetY, visited, directions, step + 1, i);
+                    pathCount += findPaths(newX, newY, targetX, targetY, visited, directions, step + 1, d);
                 }
             }
         } else {
             // Move in the specified direction
             int dirIndex = DIRECTION_CHARS.indexOf(dir);
-            if (dirIndex != -1) {
+            if (dirIndex != -1 && VALID_MOVES[x][y][dirIndex]) {
                 int newX = x + DIRECTIONS[dirIndex][0];
                 int newY = y + DIRECTIONS[dirIndex][1];
                 if (isValid(newX, newY, visited)) {
