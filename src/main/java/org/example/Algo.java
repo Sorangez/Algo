@@ -86,48 +86,54 @@ public class Algo {
      * Checks if the grid is still connected by performing a BFS from the current position.
      */
     static boolean isGridConnected(int startX, int startY, long visitedCells) {
-        boolean[][] visitedNodes = new boolean[GRID_SIZE][GRID_SIZE];
-        int[][] queue = new int[GRID_SIZE * GRID_SIZE][2];
+        int[][] queue = new int[GRID_SIZE * GRID_SIZE][2]; // Pre-allocated queue
         int front = 0, rear = 0;
+
+        // Number of cells that need to be checked for connectivity
+        int unvisitedCells = GRID_SIZE * GRID_SIZE - Long.bitCount(visitedCells);
+        if (unvisitedCells == 0) return true; // All cells already visited
 
         // Start BFS from the current cell
         queue[rear][0] = startX;
         queue[rear][1] = startY;
         rear++;
-        visitedNodes[startX][startY] = true;
+        long localVisited = visitedCells | (1L << (startX * GRID_SIZE + startY)); // Mark the starting cell
 
-        int reachableCells = 0;
-        int unvisitedCells = GRID_SIZE * GRID_SIZE - Long.bitCount(visitedCells);
+        int reachableCells = 1; // Count the starting cell as reachable
 
         while (front < rear) {
-            int[] currentCell = queue[front++];
-            int x = currentCell[0];
-            int y = currentCell[1];
-            reachableCells++;
-
-            if (reachableCells == unvisitedCells) {
-                return true; // All unvisited cells are reachable
-            }
+            int x = queue[front][0];
+            int y = queue[front][1];
+            front++;
 
             for (int direction = 0; direction < 4; direction++) {
-                if (!validMoves[x][y][direction]) continue;
                 int newX = x + DIRECTIONS[direction][0];
                 int newY = y + DIRECTIONS[direction][1];
-                if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE
-                        && !visitedNodes[newX][newY]) {
+
+                // Check bounds and if the cell is already visited
+                if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
                     int cellIndex = newX * GRID_SIZE + newY;
-                    if ((visitedCells & (1L << cellIndex)) == 0) {
-                        visitedNodes[newX][newY] = true;
+                    if ((localVisited & (1L << cellIndex)) == 0) {
+                        // Mark as visited and add to the queue
+                        localVisited |= (1L << cellIndex);
                         queue[rear][0] = newX;
                         queue[rear][1] = newY;
                         rear++;
+                        reachableCells++;
+
+                        // Terminate early if all unvisited cells are reachable
+                        if (reachableCells == unvisitedCells) {
+                            return true;
+                        }
                     }
                 }
             }
         }
 
+        // Return whether all unvisited cells were reached
         return reachableCells == unvisitedCells;
     }
+
 
     /**
      * Recursive function to find all valid paths from the current position to the target.
