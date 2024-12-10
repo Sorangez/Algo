@@ -1,212 +1,158 @@
 package org.example;
 
-public class Algo {
-    static final int GRID_SIZE = 8; // Size of the grid (8x8)
+public class Algo{
+    public static void main(String[] args) {
+        int GRIDSIZE = 8;
+        int MOVES = GRIDSIZE*GRIDSIZE - 1;
 
-    // Possible movement directions: UP, DOWN, LEFT, RIGHT
-    static final int[][] DIRECTIONS = {
-            {-1, 0}, {1, 0}, {0, -1}, {0, 1}
-    };
-    static final String DIRECTION_CHARACTERS = "UDLR"; // String representation of directions
-
-    // Precomputed Manhattan distances between all cells in the grid
-    static final int[][] manhattanDistances = new int[GRID_SIZE * GRID_SIZE][GRID_SIZE * GRID_SIZE];
-
-    static {
-        // Initialize Manhattan distances
-        for (int x1 = 0; x1 < GRID_SIZE; x1++) {
-            for (int y1 = 0; y1 < GRID_SIZE; y1++) {
-                for (int x2 = 0; x2 < GRID_SIZE; x2++) {
-                    for (int y2 = 0; y2 < GRID_SIZE; y2++) {
-                        manhattanDistances[x1 * GRID_SIZE + y1][x2 * GRID_SIZE + y2] =
-                                Math.abs(x1 - x2) + Math.abs(y1 - y2);
-                    }
-                }
-            }
-        }
-    }
-
-    // Precomputed valid moves for each cell in the grid
-    static final boolean[][][] validMoves = new boolean[GRID_SIZE][GRID_SIZE][4];
-
-    static {
-        // Initialize valid moves
-        for (int x = 0; x < GRID_SIZE; x++) {
-            for (int y = 0; y < GRID_SIZE; y++) {
-                validMoves[x][y][0] = x > 0;         // Can move UP
-                validMoves[x][y][1] = x < GRID_SIZE - 1; // Can move DOWN
-                validMoves[x][y][2] = y > 0;         // Can move LEFT
-                validMoves[x][y][3] = y < GRID_SIZE - 1; // Can move RIGHT
-            }
-        }
-    }
-
-    /**
-     * Checks if a cell is valid and not yet visited.
-     */
-    static boolean isValidCell(int x, int y, long visitedCells) {
-        return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE
-                && (visitedCells & (1L << (x * GRID_SIZE + y))) == 0;
-    }
-
-    /**
-     * Checks if the current state can be pruned based on constraints such as
-     * Manhattan distance and connectivity.
-     */
-    static boolean isPrunable(int currentX, int currentY, int targetX, int targetY,
-                              int currentStep, int totalSteps, long visitedCells) {
-        // Prune if remaining steps are insufficient to reach the target
-        int remainingSteps = totalSteps - currentStep;
-        int manhattanDistance = manhattanDistances[currentX * GRID_SIZE + currentY][targetX * GRID_SIZE + targetY];
-        if (remainingSteps < manhattanDistance) {
-            return true;
-        }
-
-        // Count valid neighbors to check connectivity
-        int neighborCount = 0;
-        for (int direction = 0; direction < 4; direction++) {
-            if (!validMoves[currentX][currentY][direction]) continue;
-            int newX = currentX + DIRECTIONS[direction][0];
-            int newY = currentY + DIRECTIONS[direction][1];
-            if (isValidCell(newX, newY, visitedCells)) {
-                neighborCount++;
-                if (neighborCount > 2) break; // No need to continue checking
-            }
-        }
-
-        // If degree of connectivity is ≤2, ensure the grid is connected
-        if (neighborCount <= 2 && !isGridConnected(currentX, currentY, visitedCells)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if the grid is still connected by performing a BFS from the current position.
-     */
-    static boolean isGridConnected(int startX, int startY, long visitedCells) {
-        int[][] queue = new int[GRID_SIZE * GRID_SIZE][2]; // Pre-allocated queue
-        int front = 0, rear = 0;
-
-        // Number of cells that need to be checked for connectivity
-        int unvisitedCells = GRID_SIZE * GRID_SIZE - Long.bitCount(visitedCells);
-        if (unvisitedCells == 0) return true; // All cells already visited
-
-        // Start BFS from the current cell
-        queue[rear][0] = startX;
-        queue[rear][1] = startY;
-        rear++;
-        long localVisited = visitedCells | (1L << (startX * GRID_SIZE + startY)); // Mark the starting cell
-
-        int reachableCells = 1; // Count the starting cell as reachable
-
-        while (front < rear) {
-            int x = queue[front][0];
-            int y = queue[front][1];
-            front++;
-
-            for (int direction = 0; direction < 4; direction++) {
-                int newX = x + DIRECTIONS[direction][0];
-                int newY = y + DIRECTIONS[direction][1];
-
-                // Check bounds and if the cell is already visited
-                if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
-                    int cellIndex = newX * GRID_SIZE + newY;
-                    if ((localVisited & (1L << cellIndex)) == 0) {
-                        // Mark as visited and add to the queue
-                        localVisited |= (1L << cellIndex);
-                        queue[rear][0] = newX;
-                        queue[rear][1] = newY;
-                        rear++;
-                        reachableCells++;
-
-                        // Terminate early if all unvisited cells are reachable
-                        if (reachableCells == unvisitedCells) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Return whether all unvisited cells were reached
-        return reachableCells == unvisitedCells;
-    }
+        // String inputDirectionCommand = "*********************************"; //for 6x6
+        // String inputDirectionCommand = "**********************************************";
+        // String inputDirectionCommand = "******";
+        String inputDirectionCommand = "*****DR******R******R********************R*D************L******";
 
 
-    /**
-     * Recursive function to find all valid paths from the current position to the target.
-     */
-    static long findPaths(int currentX, int currentY, int targetX, int targetY,
-                          long visitedCells, char[] directions, int step, int previousDirection) {
-        // Base case: Reached the end of the directions string
-        if (step == directions.length) {
-            return (currentX == targetX && currentY == targetY) ? 1 : 0;
-        }
-
-        // Prune paths that cannot lead to a solution
-        if (isPrunable(currentX, currentY, targetX, targetY, step, directions.length, visitedCells)) {
-            return 0;
-        }
-
-        // Mark the current cell as visited
-        visitedCells |= (1L << (currentX * GRID_SIZE + currentY));
-        long pathCount = 0;
-
-        char direction = directions[step];
-        if (direction == '*') { // Handle wildcard
-            for (int dir = 0; dir < 4; dir++) {
-                if (dir == (previousDirection ^ 1) || !validMoves[currentX][currentY][dir]) continue;
-                int newX = currentX + DIRECTIONS[dir][0];
-                int newY = currentY + DIRECTIONS[dir][1];
-                if (isValidCell(newX, newY, visitedCells)) {
-                    pathCount += findPaths(newX, newY, targetX, targetY, visitedCells, directions, step + 1, dir);
-                }
-            }
-        } else { // Handle specific directions
-            int dirIndex = DIRECTION_CHARACTERS.indexOf(direction);
-            if (dirIndex != -1 && validMoves[currentX][currentY][dirIndex]) {
-                int newX = currentX + DIRECTIONS[dirIndex][0];
-                int newY = currentY + DIRECTIONS[dirIndex][1];
-                if (isValidCell(newX, newY, visitedCells)) {
-                    pathCount += findPaths(newX, newY, targetX, targetY, visitedCells, directions, step + 1, dirIndex);
-                }
-            }
-        }
-
-        return pathCount;
-    }
-
-    /**
-     * Processes the input string and calculates the total number of valid paths.
-     */
-    static void processInput(String input) {
-        input = input.toUpperCase();
-
-        if (!input.matches("[UDLR*]+")) {
-            System.out.println("Error: Input contains invalid characters.");
+        if (inputDirectionCommand.length() != MOVES){
+            System.out.print("Invalid input!\n");
+            System.out.print("Please insert " + MOVES + " characters totally!\n");
+            System.out.print("Insert " + (MOVES - inputDirectionCommand.length()) + " more characters");
             return;
         }
 
-        if (input.length() != (GRID_SIZE * GRID_SIZE) - 1) {
-            System.out.println("Error: Input length must be " + ((GRID_SIZE * GRID_SIZE) - 1)
-                    + ". Current length: " + input.length());
-            return;
-        }
-
-        char[] directions = input.toCharArray();
-
+        grid myGrid = new grid(GRIDSIZE, inputDirectionCommand);
         long startTime = System.currentTimeMillis();
-        long totalPaths = findPaths(0, 0, GRID_SIZE - 1, 0, 0L, directions, 0, -1);
+        myGrid.findTotalPath(0, 0, 0);
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Total paths: " + totalPaths);
-        System.out.println("Execution time: " + (endTime - startTime) + " ms");
+        System.out.print("Total paths: " + myGrid.totalPaths + "\n");
+        System.out.print("Total time: " + (endTime - startTime) + "ms");
+    }
+}
+
+
+class grid {
+    int gridSize;
+    boolean[][] visitedCell; // Tracks visited cells
+    int[][] directionArray = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Up, Down, Left, Right
+    char[] directionChar;
+    long totalPaths = 0;
+    int[] shortestDistance2Target;
+
+    public grid(int size, String directionString) { // Constructor
+        this.gridSize = size;
+        this.visitedCell = new boolean[gridSize][gridSize];
+        this.directionChar = directionString.toCharArray();
+        initShortestDistances(); // Precompute distance at initialization
     }
 
-    public static void main(String[] args) {
-        String input = "*****DR******R******R********************R*D******L*****L******";
-        processInput(input);
+    private void initShortestDistances() {
+        this.shortestDistance2Target = precomputeShortestDistance2Target();
+    }
+
+    private boolean isValidMove(int row, int col){
+        return (row >= 0 && row < gridSize //row within bounds
+                && col < gridSize && col >= 0 //col within bounds
+                && !visitedCell[row][col]); //the visited cell must be also false
+    }
+
+    private int[] precomputeShortestDistance2Target() {
+        // Precompute and store the shortest distance to the target cell
+        int[] distances = new int[gridSize * gridSize];
+        for (int i = 0; i < gridSize; i++) {
+            for (int j = 0; j < gridSize; j++) {
+                int index = i * gridSize + j;
+                distances[index] = Math.abs(i - (gridSize - 1)) + j;
+            }
+        }
+        return distances;
+    }
+
+    //this method prune when it detects the next moves are impossible to reach the target cell in a valid way
+    private boolean isPrune(int row, int col, int step){
+        //calculate the remaining steps
+        int remainingSteps = (gridSize * gridSize - 1) - step;
+        int distanceToTarget = shortestDistance2Target[row * gridSize + col];
+
+        //prune if the remaining steps are insufficient to reach the target distance
+        return remainingSteps < distanceToTarget;
+    }
+
+
+    boolean canVisitAllRemainingCells(int row, int col,int step) {
+        boolean[][] visitedCopy = new boolean[gridSize][gridSize];
+        for (int i = 0; i < gridSize; i++) {
+            System.arraycopy(visitedCell[i], 0, visitedCopy[i], 0, gridSize);
+        }
+        return floodFill(row, col, visitedCopy) >= (gridSize * gridSize - step);
+    }
+
+    int floodFill(int row, int col, boolean[][] visitedCopy) {
+        if (row < 0 || row >= gridSize || col < 0 || col >= gridSize || visitedCopy[row][col]) {
+            return 0;
+        }
+        visitedCopy[row][col] = true;
+        int count = 1;
+        for (int[] direction : directionArray) {
+            count += floodFill(row + direction[0], col + direction[1], visitedCopy);
+        }
+        return count;
+    }
+
+    private boolean isDeadEnd(int row, int col) {
+        boolean left = (col > 0) && visitedCell[row][col - 1]; // Check if left is within bounds
+        boolean right = (col < gridSize - 1) && visitedCell[row][col + 1]; // Check if right is within bounds
+        boolean up = (row > 0) && visitedCell[row - 1][col]; // Check if up is within bounds
+        boolean down = (row < gridSize - 1) && visitedCell[row + 1][col]; // Check if down is within bounds
+
+        return ((left && right) && (!up && !down)) ||
+                ((up && down) && (!left && !right));
+    }
+
+
+    public void findTotalPath(int startRow, int startCol, int step) {
+        // Base case: Stop recursion when path is complete
+        if (step == gridSize * gridSize - 1) {
+            if (startRow == gridSize - 1 && startCol == 0) {
+                totalPaths++; // Found a valid path
+            }
+            return;
+        }
+
+        // Skip invalid moves
+        if (!isValidMove(startRow, startCol)) return;
+
+        if (isDeadEnd(startRow, startCol)) return; // Prune dead-end paths
+
+        if (isPrune(startRow, startCol, step)) return;
+
+        if (!canVisitAllRemainingCells(startRow, startCol, step)) {
+            return;
+        }
+
+        visitedCell[startRow][startCol] = true;
+
+        char dir = directionChar[step];
+        if (dir == '*'){ //if detect there is a ''
+            //try all possible directions
+            for (int[] direction : directionArray){
+                int newRow = startRow + direction[0];
+                int newCol = startCol + direction[1];
+                if (isValidMove(newRow, newCol)){
+                    // long oldTotalPaths = totalPaths;
+                    findTotalPath(newRow, newCol, step + 1);
+                    // pathsFromHere += (totalPaths - oldTotalPaths);
+                }
+            }
+        } else {
+            //Moving in the specified direction
+            int dirIndex = "UDLR".indexOf(dir); //UDLR order must follow the order of declared directionArray
+            int newRow = startRow + directionArray[dirIndex][0];
+            int newCol = startCol + directionArray[dirIndex][1];
+            if (isValidMove(newRow, newCol)){
+                // long oldTotalPaths = totalPaths;
+                findTotalPath(newRow, newCol, step + 1);
+                // pathsFromHere += (totalPaths - oldTotalPaths);
+            }
+        }
+        visitedCell[startRow][startCol] = false; //backtrack
     }
 }
