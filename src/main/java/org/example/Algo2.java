@@ -6,9 +6,9 @@ public class Algo2 {
         int totalMoves = gridSize * gridSize - 1; // Total steps needed to complete the path
 
         // Case 1: All '*' (wildcard moves)
-         String directionCommands = "***************************************************************";
+//         String directionCommands = "***************************************************************";
         // Case 2: Mixed commands with specific directions
-//        String directionCommands = "*****DR******R******R********************R*D************L******";
+        String directionCommands = "*****DR******R******R********************R*D************L******";
 
         // Validate the input length to match the required number of moves
         if (directionCommands.length() != totalMoves) {
@@ -31,18 +31,21 @@ public class Algo2 {
 }
 
 class Grid2 {
-    private int gridSize; // Dimension of the grid (NxN)
-    private int[][] visitedCells; // Tracks visited cells during the search
+    private final int gridSize; // Dimension of the grid (NxN)
+    private final int[][] visitedCells; // Tracks visited cells during the search
     private long visitedMask = 0L; // Bitmask representation of visited cells
-    private int[][] directionArray = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Movement directions: Up, Down, Left, Right
-    private char[] directionCommands; // Input command sequence (e.g., '*', 'U', 'D', 'L', 'R')
+    private final int[][] directionArray = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Movement directions: Up, Down, Left, Right
+    private final char[] directionCommands; // Input command sequence (e.g., '*', 'U', 'D', 'L', 'R')
     public long totalPaths = 0; // Counter for the total number of valid paths
     private long[] neighbors; // Precomputed valid neighbors for each cell
     private int[] shortestDistancesToTarget; // Precomputed Manhattan distances to the target
 
     private int wildcardStepCount = 0; // Tracks the number of wildcard steps taken
-    private int totalCells; // Total cells in the grid (gridSize^2)
-    private int maxSteps; // Total steps required to traverse the grid
+    private final int totalCells; // Total cells in the grid (gridSize^2)
+    private final int maxSteps; // Total steps required to traverse the grid
+
+    private int target1;
+    private int target2;
 
     public Grid2(int size, String commands) {
         this.gridSize = size;
@@ -157,8 +160,6 @@ class Grid2 {
         }
     }
 
-
-
     // Precompute valid neighbors for each cell using bitmasks
     private void precomputeNeighbors() {
         neighbors = new long[totalCells];
@@ -237,22 +238,22 @@ class Grid2 {
     // Ensure specific constraints for edge and corner cells are met
     private boolean checkBorderConstraints(int row, int col) {
         if (row == gridSize - 1) {
-            for (int x = col + 1; x < gridSize; x++) {
+            for (int x = gridSize - 1; x > col; x--) {
                 if (visitedCells[row][x] != 0) return false;
             }
         }
-        if (col == gridSize - 1) {
+        else if (col == gridSize - 1) {
             for (int y = 0; y < row; y++) {
                 if (visitedCells[y][col] != 0) return false;
             }
         }
-        if (row == 0 && col > 0) {
+        else if (row == 0) {
             for (int x = 1; x < col; x++) {
                 if (visitedCells[row][x] != 0) return false;
             }
         }
-        if (col == 0) {
-            for (int y = 0; y < row; y++) {
+        else if (col == 0) {
+            for (int y = 1; y < row; y++) {
                 if (visitedCells[y][col] != 0) return false;
             }
         }
@@ -277,15 +278,13 @@ class Grid2 {
 //        if (!isValidMove(row, col)) return; // Invalid move
 //        if (isDeadEnd(row, col)) return; // Dead end detected
 //        if (!checkBorderConstraints(row, col)) return; // Border constraints violated
-        if (shouldPrune(row, col, step)) return; // Prune based on remaining steps
+//        if (shouldPrune(row, col, step)) return; // Prune based on remaining steps
 
         int visitCellValue = visitedCells[row][col];
 
         // If the path reaches the last step, check if it ends at the target cell
         if (step == maxSteps) {
-            if (row == gridSize - 1 && col == 0) { // Target: bottom-left corner
-                totalPaths++;
-            }
+            checkEnding(row, col);
             return;
         }
 
@@ -309,12 +308,10 @@ class Grid2 {
         }
 
         int updateDirections = moveToPosition(row, col);
+        int validMoves = getValidMoves(row, col); // Get the valid moves bitmask
 
         // Explore all directions for a wildcard step
         if (command == '*') {
-            // Get the valid moves as a bitmask
-            int validMoves = getValidMoves(row, col);
-
             // Check each direction (up, down, left, right) based on the bitmask
             for (int i = 0; i < directionArray.length; i++) {
                 // If the bit at position i is set, the move in this direction is valid
@@ -326,7 +323,6 @@ class Grid2 {
             }
         } else {
             int directionIndex = "UDLR".indexOf(command);
-            int validMoves = getValidMoves(row, col); // Get the valid moves bitmask
 
             // Check if the specified direction is valid by checking the corresponding bit in the bitmask
             if ((validMoves & (1 << directionIndex)) != 0) {
@@ -341,6 +337,12 @@ class Grid2 {
 
         if (command == '*') {
             wildcardStepCount--;
+        }
+    }
+
+    private void checkEnding(int row, int col) {
+        if (row == gridSize - 1 && col == 0) { // Target: bottom-left corner
+            totalPaths++;
         }
     }
 }
