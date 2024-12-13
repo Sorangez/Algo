@@ -1,3 +1,5 @@
+package org.example;
+
 public class Algo2 {
     public static void main(String[] args) {
 
@@ -59,7 +61,7 @@ class Grid2 {
         //Precompute solutions
         precomputeNeighbors();
         initializeMap();
-        initializeShortestDistances();
+//        initializeShortestDistances();
     }
 
     /**
