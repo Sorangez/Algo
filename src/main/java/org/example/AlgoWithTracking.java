@@ -36,10 +36,10 @@ public class AlgoWithTracking {
         int gridSize = 8; // Dimension of the grid (NxN)
 
         // Case 1: All '*' (wildcard moves)
-         String directionCommands = "***************************************************************";
+//         String directionCommands = "***************************************************************";
 
         // Case 2: Mixed commands with specific directions (uncomment to test)
-//        String directionCommands = "*****DR******R******R********************R*D************L******";
+        String directionCommands = "*****DR******R******R********************R*D************L******";
 
         calculatePath(gridSize, directionCommands);
     }
@@ -48,8 +48,6 @@ public class AlgoWithTracking {
 
 /**
  *  Main class used for computing
- *
- *
  */
 class Grid2 {
     private final int gridSize; // Dimension of the grid (N x N)
@@ -79,6 +77,8 @@ class Grid2 {
     public int connectivity = 0;
     public int border = 0;
     public int deadEnd = 0;
+
+    // --- CONSTRUCTOR AND INITIALIZATION ---
 
     /**
      * Initialize the grid
@@ -162,167 +162,32 @@ class Grid2 {
     }
 
     /**
-     * Check if a move is valid: the cell must be within bounds, unvisited, meet border constraints,
-     * and not lead to a dead end.
-     * @param row row index
-     * @param col column index
-     * @return true if valid. otherwise false
+     * Compute the Manhattan distance from every cell to the target cell (gridSize-1, 0).
+     * @return shortest distance to target cell
      */
-    private boolean isValidMove(int row, int col, int step) {
-        return inBounds(row, col)
-                && visitedCells[row][col] != 0
-                && checkBorderConstraints(row, col)
-                && !isDeadEnd(row, col)
-//                && isManhattanValid(row, col, step)
-                ;
+    private int[] computeShortestDistancesToTarget() {
+        int[] distances = new int[totalCells];
+        int targetRow = gridSize - 1;
+
+        for (int row = 0; row < gridSize; row++) {
+            for (int col = 0; col < gridSize; col++) {
+                int index = row * gridSize + col;
+                distances[index] = Math.abs(row - targetRow) + col;
+            }
+        }
+
+        return distances;
     }
 
     /**
-     * Detect dead ends where the path cannot continue.
-     * A dead end is defined here as certain blocked configurations of adjacent cells.
-     * @param row row index
-     * @param col column index
-     * @return true if current cell leads to dead end. otherwise false
+     * Precompute the shortest Manhattan distances to the target cell (bottom-left corner).
+     * This information is used for pruning.
      */
-    private boolean isDeadEnd(int row, int col) {
-        boolean left = (col == 0) || visitedCells[row][col - 1] == 0;
-        boolean right = (col == gridSize - 1) || visitedCells[row][col + 1] == 0;
-        boolean up = (row == 0) || visitedCells[row - 1][col] == 0;
-        boolean down = (row == gridSize - 1) || visitedCells[row + 1][col] == 0;
-
-        boolean horizontalBlock = (left && right) && (!up && !down);
-        boolean verticalBlock = (up && down) && (!left && !right);
-
-        if (horizontalBlock || verticalBlock) {
-            deadEnd++;
-            return true;
-        } else {
-            return false;
-        }
-
-//        return horizontalBlock || verticalBlock;
+    private void initializeShortestDistances() {
+        this.shortestDistancesToTarget = computeShortestDistancesToTarget();
     }
 
-    private boolean failBorderConstraint() {
-        border++;
-        return false;
-    }
-
-    /**
-     * Ensure that certain border constraints are met.
-     * @param row row index
-     * @param col column index
-     * @return false if current cell violate constraints. otherwise true
-     */
-    private boolean checkBorderConstraints(int row, int col) {
-        // For bottom border, all cells to the right must be visited
-        if (row == gridSize - 1) {
-            for (int x = gridSize - 1; x > col; x--) {
-                if (visitedCells[row][x] != 0) return failBorderConstraint();
-            }
-        }
-
-        // For right border, all cells above must be visited
-        else if (col == gridSize - 1) {
-            for (int y = 0; y < row; y++) {
-                if (visitedCells[y][col] != 0) return failBorderConstraint();
-            }
-        }
-
-        // For top border, all cells between must be visited
-        else if (row == 0) {
-            for (int x = 1; x < col; x++) {
-                if (visitedCells[row][x] != 0) return failBorderConstraint();
-            }
-        }
-
-        // For left border, all cells above must be visited
-        else if (col == 0) {
-            for (int y = 1; y < row; y++) {
-                if (visitedCells[y][col] != 0) return failBorderConstraint();
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Count how many valid moves are available from the given cell.
-     * @param row row index
-     * @param col column index
-     * @return
-     */
-    private int countValidMoves(int row, int col, int step) {
-        int count = 0;
-        for (int[] direction : directionArray) {
-            int newRow = row + direction[0];
-            int newCol = col + direction[1];
-            if (isValidMove(newRow, newCol, step)) {
-                count++;
-                if (count > 1) break; // Early exit if more than 1 move is possible
-            }
-        }
-        return count;
-    }
-
-    /**
-     * Check if all remaining cells are reachable from the current cell by performing a BFS-like check
-     * using bitmasks. This is used to prune paths that cannot cover all cells.
-     */
-    private boolean canVisitAllRemainingCells(int row, int col, int step) {
-        int requiredCells = totalCells - step;
-        int startIndex = row * gridSize + col;
-        long startMask = 1L << startIndex;
-
-        // If the start cell is already visited, return false
-        if ((visitedMask & startMask) != 0) {
-            return false;
-        }
-
-        // Initialize BFS state
-        long reached = startMask;
-        long frontier = startMask;
-        long invertedVisited = ~visitedMask;
-
-        // Perform BFS to explore all reachable cells
-        while (frontier != 0) {
-            long nextFrontier = 0L;
-            while (frontier != 0) {
-                int cell = Long.numberOfTrailingZeros(frontier);
-                frontier &= (frontier - 1);
-                long candidates = neighbors[cell] & invertedVisited & ~reached;
-//                if (candidates != 0) {
-                    reached |= candidates;
-                    nextFrontier |= candidates;
-//                }
-            }
-            frontier = nextFrontier;
-        }
-
-        return (Long.bitCount(reached) == requiredCells);
-    }
-
-    /**
-     * Get a bitmask representing valid moves (up, down, left, right) from the current cell.
-     * If a cell with a value 1 is found, only that direction is considered valid.
-     */
-    private int getValidMoves(int row, int col, int step) {
-        int validMoves = 0;
-        for (int i = 0; i < directionArray.length; i++) {
-            int newRow = row + directionArray[i][0];
-            int newCol = col + directionArray[i][1];
-
-            if (isValidMove(newRow, newCol, step) ) {
-                // If a cell with value == 1 is found, return only that direction
-                if (visitedCells[newRow][newCol] == 1) {
-                    return (1 << i);
-                }
-                // Otherwise accumulate all valid moves
-                validMoves |= (1 << i);
-            }
-        }
-        return validMoves;
-    }
+    // --- MAIN ---
 
     /**
      * Attempt to move into a given cell. Mark it as visited and decrement the count
@@ -351,6 +216,10 @@ class Grid2 {
 
     /**
      * Undo a move performed by moveToPosition. Restores the original state.
+     * @param row row index
+     * @param col column index
+     * @param originalValue original value of the cell to undo to
+     * @param directionBitmask affected direction of a move returned by moveToPosition
      */
     private void undoMove(int row, int col, int originalValue, int directionBitmask) {
         visitedCells[row][col] = originalValue;
@@ -376,7 +245,6 @@ class Grid2 {
             totalPaths++;
         }
     }
-
 
     /**
      * Recursively moving and backtracking to find all valid paths.
@@ -410,9 +278,11 @@ class Grid2 {
                         connectivity++;
                         break;
                     }
+
                     findTotalPaths(newRow, newCol, step + 1);
                 }
             }
+            wildcardStepCount--;
         } else {
             // Follow the specific direction provided
             int directionIndex = "UDLR".indexOf(command);
@@ -425,40 +295,169 @@ class Grid2 {
 
         // Backtrack
         undoMove(row, col, originalValue, updatedDirections);
+    }
 
-        if (command == '*') {
-            wildcardStepCount--;
+    // --- EARLY STOPPING ---
+    /**
+     * Check if a move is valid: the cell must be within bounds, unvisited, meet border constraints,
+     * and not lead to a dead end.
+     * @param row row index
+     * @param col column index
+     * @return true if valid. otherwise false
+     */
+    private boolean isValidMove(int row, int col, int step) {
+        return inBounds(row, col)
+                && visitedCells[row][col] != 0
+                && checkBorderConstraints(row, col)
+                && !isDeadEnd(row, col)
+                && isManhattanValid(row, col, step)
+                ;
+    }
+
+    /**
+     * Detect dead ends where the path cannot continue.
+     * A dead end is defined here as certain blocked configurations of adjacent cells.
+     * @param row row index
+     * @param col column index
+     * @return true if current cell leads to dead end. otherwise false
+     */
+    private boolean isDeadEnd(int row, int col) {
+        boolean left = (col == 0) || visitedCells[row][col - 1] == 0;
+        boolean right = (col == gridSize - 1) || visitedCells[row][col + 1] == 0;
+        boolean up = (row == 0) || visitedCells[row - 1][col] == 0;
+        boolean down = (row == gridSize - 1) || visitedCells[row + 1][col] == 0;
+
+        boolean horizontalBlock = (left && right) && (!up && !down);
+        boolean verticalBlock = (up && down) && (!left && !right);
+
+        if (horizontalBlock || verticalBlock) {
+            deadEnd++;
+            return true;
+        } else {
+            return false;
         }
     }
 
     /**
-     * Compute the Manhattan distance from every cell to the target cell (gridSize-1, 0).
+     * Increment tracker for border constraint
+     * @return false as it only triggers on fail
      */
-    private int[] computeShortestDistancesToTarget() {
-        int[] distances = new int[totalCells];
-        int targetRow = gridSize - 1;
+    private boolean failBorderConstraint() {
+        border++;
+        return false;
+    }
 
-        for (int row = 0; row < gridSize; row++) {
-            for (int col = 0; col < gridSize; col++) {
-                int index = row * gridSize + col;
-                distances[index] = Math.abs(row - targetRow) + col;
+    /**
+     * Ensure that certain border constraints are met.
+     * @param row row index
+     * @param col column index
+     * @return false if current cell violate constraints. otherwise true
+     */
+    private boolean checkBorderConstraints(int row, int col) {
+        if (row == gridSize - 1) {
+            for (int x = gridSize - 1; x > col; x--) {
+                if (visitedCells[row][x] != 0) return failBorderConstraint();
             }
         }
 
-        return distances;
+        // For right border, all cells above must be visited
+        else if (col == gridSize - 1) {
+            for (int y = 0; y < row; y++) {
+                if (visitedCells[y][col] != 0) return failBorderConstraint();
+            }
+        }
+
+        // For top border, all cells between must be visited
+        else if (row == 0) {
+            for (int x = 1; x < col; x++) {
+                if (visitedCells[row][x] != 0) return failBorderConstraint();
+            }
+        }
+
+        // For left border, all cells above must be visited
+        else if (col == 0) {
+            for (int y = 1; y < row; y++) {
+                if (visitedCells[y][col] != 0) return failBorderConstraint();
+            }
+        }
+
+        return true;
     }
 
     /**
-     * Precompute the shortest Manhattan distances to the target cell (bottom-left corner).
-     * This information is used for pruning.
+     * Check if all remaining cells are reachable from the current cell by performing a BFS-like check
+     * using bitmasks. This is used to prune paths that cannot cover all cells.
+     * @param row row index
+     * @param col column index
+     * @param step current step index
+     * @return true if the path is able to cover all cells. otherwise false
      */
-    private void initializeShortestDistances() {
-        this.shortestDistancesToTarget = computeShortestDistancesToTarget();
+    private boolean canVisitAllRemainingCells(int row, int col, int step) {
+        int requiredCells = totalCells - step;
+        int startIndex = row * gridSize + col;
+        long startMask = 1L << startIndex;
+
+        // If the start cell is already visited, return false
+        if ((visitedMask & startMask) != 0) {
+            return false;
+        }
+
+        // Initialize BFS state
+        long reached = startMask;
+        long frontier = startMask;
+        long invertedVisited = ~visitedMask;
+
+        // Perform BFS to explore all reachable cells
+        while (frontier != 0) {
+            long nextFrontier = 0L;
+            while (frontier != 0) {
+                int cell = Long.numberOfTrailingZeros(frontier);
+                frontier &= (frontier - 1);
+                long candidates = neighbors[cell] & invertedVisited & ~reached;
+//                if (candidates != 0) {
+                reached |= candidates;
+                nextFrontier |= candidates;
+//                }
+            }
+            frontier = nextFrontier;
+        }
+
+        return (Long.bitCount(reached) == requiredCells);
+    }
+
+    /**
+     * Get a bitmask representing valid moves (up, down, left, right) from the current cell.
+     * If a cell with a value 1 is found, only that direction is considered valid.
+     * @param row row index
+     * @param col column index
+     * @param step current step index
+     * @return bitmask of valid directions
+     */
+    private int getValidMoves(int row, int col, int step) {
+        int validMoves = 0;
+        for (int i = 0; i < directionArray.length; i++) {
+            int newRow = row + directionArray[i][0];
+            int newCol = col + directionArray[i][1];
+
+            if (isValidMove(newRow, newCol, step) ) {
+                // If a cell with value == 1 is found, return only that direction
+                if (visitedCells[newRow][newCol] == 1) {
+                    return (1 << i);
+                }
+                // Otherwise accumulate all valid moves
+                validMoves |= (1 << i);
+            }
+        }
+        return validMoves;
     }
 
     /**
      * Determine if we should prune the search from the current cell at the given step.
      * We prune if there are not enough steps left to reach the target.
+     * @param row row index
+     * @param col column index
+     * @param step current step index
+     * @return true if the current path still follow Manhattan algorithm. otherwise false
      */
     private boolean isManhattanValid(int row, int col, int step) {
         int currentIndex = row * gridSize + col;
@@ -471,7 +470,5 @@ class Grid2 {
         } else {
             return true;
         }
-
-//        return remainingSteps > distanceToTarget;
     }
 }
