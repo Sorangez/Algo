@@ -1,6 +1,6 @@
 package org.example;
 
-public class Algo {
+public class AlgoWithTracking {
     public static void calculatePath(int size, String commands) {
         int totalMoves = size * size - 1; // Total steps needed to complete the path
 
@@ -14,7 +14,7 @@ public class Algo {
 
         // Initialize the grid and compute paths
         long precomputedStartTime = System.currentTimeMillis();
-        Grid grid2 = new Grid(size, commands);
+        Grid2 grid2 = new Grid2(size, commands);
         long precomputedEndTime = System.currentTimeMillis();
 
         System.out.println("Precomputed time: " + (precomputedEndTime - precomputedStartTime) + "ms");
@@ -26,16 +26,20 @@ public class Algo {
         // Output the results
         System.out.println("Total paths: " + grid2.totalPaths);
         System.out.println("Total time: " + (endTime - startTime) + "ms");
+        System.out.println("Manhattan prune: " + (grid2.manhattan));
+        System.out.println("Connectivity prune: " + (grid2.connectivity));
+        System.out.println("Border constraints prune: " + (grid2.border));
+        System.out.println("Dead end prune: " + (grid2.deadEnd));
     }
 
     public static void main(String[] args) {
         int gridSize = 8; // Dimension of the grid (NxN)
 
         // Case 1: All '*' (wildcard moves)
-        String directionCommands = "***************************************************************";
+         String directionCommands = "***************************************************************";
 
         // Case 2: Mixed commands with specific directions (uncomment to test)
-        //String directionCommands = "*****DR******R******R********************R*D************L******";
+//        String directionCommands = "*****DR******R******R********************R*D************L******";
 
         calculatePath(gridSize, directionCommands);
     }
@@ -47,7 +51,7 @@ public class Algo {
  *
  *
  */
-class Grid {
+class Grid2 {
     private final int gridSize; // Dimension of the grid (N x N)
     private final int maxSteps; // Steps required to traverse the entire grid
     private final int[][] visitedCells; // Tracks visited cells
@@ -55,10 +59,10 @@ class Grid {
 
     private final char[] directionCommands; // Input command sequence ('*', 'U', 'D', 'L', 'R')
     private final int[][] directionArray = {
-            {-1, 0}, // Up
-            {1, 0}, // Down
-            {0, -1}, // Left
-            {0, 1} // Right
+        {-1, 0}, // Up
+        {1, 0}, // Down
+        {0, -1}, // Left
+        {0, 1} // Right
     };
 
     public long totalPaths = 0; // Count of valid paths
@@ -70,12 +74,18 @@ class Grid {
     private int wildcardStepCount = 0; // Number of wildcard steps taken
     private final int totalCells; // Total cells in the grid (gridSize^2)
 
+
+    public int manhattan = 0;
+    public int connectivity = 0;
+    public int border = 0;
+    public int deadEnd = 0;
+
     /**
      * Initialize the grid
      * @param size the dimension of the grid (N x N)
      * @param commands the commands in string
      */
-    public Grid(int size, String commands) {
+    public Grid2(int size, String commands) {
         this.gridSize = size;
         this.visitedCells = new int[gridSize][gridSize];
         this.directionCommands = commands.toCharArray();
@@ -183,7 +193,19 @@ class Grid {
         boolean horizontalBlock = (left && right) && (!up && !down);
         boolean verticalBlock = (up && down) && (!left && !right);
 
-        return horizontalBlock || verticalBlock;
+        if (horizontalBlock || verticalBlock) {
+            deadEnd++;
+            return true;
+        } else {
+            return false;
+        }
+
+//        return horizontalBlock || verticalBlock;
+    }
+
+    private boolean failBorderConstraint() {
+        border++;
+        return false;
     }
 
     /**
@@ -196,28 +218,28 @@ class Grid {
         // For bottom border, all cells to the right must be visited
         if (row == gridSize - 1) {
             for (int x = gridSize - 1; x > col; x--) {
-                if (visitedCells[row][x] != 0) return false;
+                if (visitedCells[row][x] != 0) return failBorderConstraint();
             }
         }
 
         // For right border, all cells above must be visited
         else if (col == gridSize - 1) {
             for (int y = 0; y < row; y++) {
-                if (visitedCells[y][col] != 0) return false;
+                if (visitedCells[y][col] != 0) return failBorderConstraint();
             }
         }
 
         // For top border, all cells between must be visited
         else if (row == 0) {
             for (int x = 1; x < col; x++) {
-                if (visitedCells[row][x] != 0) return false;
+                if (visitedCells[row][x] != 0) return failBorderConstraint();
             }
         }
 
         // For left border, all cells above must be visited
         else if (col == 0) {
             for (int y = 1; y < row; y++) {
-                if (visitedCells[y][col] != 0) return false;
+                if (visitedCells[y][col] != 0) return failBorderConstraint();
             }
         }
 
@@ -270,8 +292,8 @@ class Grid {
                 frontier &= (frontier - 1);
                 long candidates = neighbors[cell] & invertedVisited & ~reached;
 //                if (candidates != 0) {
-                reached |= candidates;
-                nextFrontier |= candidates;
+                    reached |= candidates;
+                    nextFrontier |= candidates;
 //                }
             }
             frontier = nextFrontier;
@@ -385,9 +407,9 @@ class Grid {
                     int newCol = col + directionArray[i][1];
 
                     if (wildcardStepCount % 5 == 0 && validMoves > 0 && !canVisitAllRemainingCells(newRow, newCol, step + 1)) {
+                        connectivity++;
                         break;
                     }
-
                     findTotalPaths(newRow, newCol, step + 1);
                 }
             }
@@ -443,6 +465,13 @@ class Grid {
         int remainingSteps = maxSteps - step;
         int distanceToTarget = shortestDistancesToTarget[currentIndex];
 
-        return remainingSteps > distanceToTarget;
+        if (remainingSteps < distanceToTarget) {
+            manhattan++;
+            return false;
+        } else {
+            return true;
+        }
+
+//        return remainingSteps > distanceToTarget;
     }
 }
