@@ -1,6 +1,14 @@
 package org.example;
 
+/**
+ * Main class
+ */
 public class AlgoWithTracking {
+    /**
+     * Execution function
+     * @param size grid size (N x N)
+     * @param commands command string (must be (N^2)-1 in length)
+     */
     public static void calculatePath(int size, String commands) {
         int totalMoves = size * size - 1; // Total steps needed to complete the path
 
@@ -47,7 +55,7 @@ public class AlgoWithTracking {
 
 
 /**
- *  Main class used for computing
+ *  Representing a grid, Used for computing
  */
 class Grid2 {
     private final int gridSize; // Dimension of the grid (N x N)
