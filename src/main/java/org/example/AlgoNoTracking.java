@@ -53,10 +53,10 @@ class Grid3 {
 
     private final char[] directionCommands; // Input command sequence ('*', 'U', 'D', 'L', 'R')
     private final int[][] directionArray = {
-        {-1, 0}, // Up
-        {1, 0}, // Down
-        {0, -1}, // Left
-        {0, 1} // Right
+            {-1, 0}, // Up
+            {1, 0}, // Down
+            {0, -1}, // Left
+            {0, 1} // Right
     };
 
     public long totalPaths = 0; // Count of valid paths
@@ -392,8 +392,8 @@ class Grid3 {
                 frontier &= (frontier - 1);
                 long candidates = neighbors[cell] & invertedVisited & ~reached;
 //                if (candidates != 0) {
-                    reached |= candidates;
-                    nextFrontier |= candidates;
+                reached |= candidates;
+                nextFrontier |= candidates;
 //                }
             }
             frontier = nextFrontier;
