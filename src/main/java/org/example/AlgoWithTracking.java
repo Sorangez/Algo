@@ -44,7 +44,7 @@ public class AlgoWithTracking {
         int gridSize = 8; // Dimension of the grid (NxN)
 
         // Case 1: All '*' (wildcard moves)
-//         String directionCommands = "***************************************************************";
+//        String directionCommands = "***************************************************************";
 
         // Case 2: Mixed commands with specific directions (uncomment to test)
         String directionCommands = "*****DR******R******R********************R*D************L******";
