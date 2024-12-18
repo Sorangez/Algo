@@ -399,10 +399,10 @@ public class Algo {
                 int cell = Long.numberOfTrailingZeros(frontier);
                 frontier &= (frontier - 1);
                 long candidates = neighbors[cell] & invertedVisited & ~reached;
-//                if (candidates != 0) {
-                reached |= candidates;
-                nextFrontier |= candidates;
-//                }
+                if (candidates != 0) {
+                    reached |= candidates;
+                    nextFrontier |= candidates;
+                }
             }
             frontier = nextFrontier;
         }
